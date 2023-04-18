@@ -16,14 +16,14 @@ public class SevenZipArchiveFormat
         SevenZipLibrary.GetNumberOfFormats(out num).EnsureSuccess();
         for (uint i = 0; i < num; i++) {
             SevenZipLibrary.GetHandlerProperty2(i, NHandlerPropID.kClassID, out value).EnsureSuccess();
-            CLSID* classIdPtr = value.GetPointer<CLSID>();
+            CLSID* classIdPtr = value.ReadPointer<CLSID>();
             if (classIdPtr == null) {
                 continue;
             }
             CLSID classId = *classIdPtr;
 
             SevenZipLibrary.GetHandlerProperty2(i, NHandlerPropID.kName, out value).EnsureSuccess();
-            string name = value.GetString();
+            string name = value.ReadString();
 
             SevenZipArchiveFormat format = new(
                 name: name,
@@ -31,10 +31,10 @@ public class SevenZipArchiveFormat
             );
 
             SevenZipLibrary.GetHandlerProperty2(i, NHandlerPropID.kExtension, out value).EnsureSuccess();
-            string[] extList = value.GetString().Split(" ");
+            string[] extList = value.ReadString().Split(" ");
 
             SevenZipLibrary.GetHandlerProperty2(i, NHandlerPropID.kAddExtension, out value).EnsureSuccess();
-            string? rawAddExt = value.GetOptionalString();
+            string? rawAddExt = value.ReadOptionalString();
             string[] addExtList = rawAddExt == null ? extList.Select(_ => "*").ToArray() : rawAddExt.Split(" ");
 
             foreach ((string ext, string addExt) in extList.Zip(addExtList))

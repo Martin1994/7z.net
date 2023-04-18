@@ -29,7 +29,7 @@ public struct PROPVARIANT
     [FieldOffset(8)] internal Int64 lVal;
     [FieldOffset(8)] internal float fltVal;
     [FieldOffset(8)] internal double dblVal;
-    [FieldOffset(8)] internal short boolVal;
+    [FieldOffset(8)] internal bool boolVal;
     [FieldOffset(8)] internal IntPtr ptrVal;
     [FieldOffset(8)] internal PROPARRAY ca;
     [FieldOffset(8)] internal System.Runtime.InteropServices.ComTypes.FILETIME filetime;
@@ -91,20 +91,15 @@ public enum VARENUM : ushort
     VT_TYPEMASK	= 0xfff
 }
 
-public static class PROPVARIANTExtension
+public static unsafe class BSTRExtension
 {
     private static UTF32Encoding utf32 = new UTF32Encoding();
 
-    public static unsafe string GetString(this ref PROPVARIANT prop)
+    public static string ReadBSTR(this IntPtr ptr)
     {
-        if (prop.varType != VARENUM.VT_BSTR)
-        {
-            throw new ArgumentException($"Expect VT_BSTR but got {Enum.GetName(prop.varType)}");
-        }
-
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            return Marshal.PtrToStringBSTR(prop.ptrVal)!;
+            return Marshal.PtrToStringBSTR(ptr)!;
         }
         else
         {
@@ -112,11 +107,25 @@ public static class PROPVARIANTExtension
             // See: MyWindows.h
             //     typedef wchar_t WCHAR;
             //     typedef WCHAR OLECHAR;
-            return utf32.GetString(new ReadOnlySpan<byte>((byte*)prop.ptrVal, *(((int*)prop.ptrVal) - 1)));
+            return utf32.GetString(new ReadOnlySpan<byte>((byte*)ptr, *(((int*)ptr) - 1)));
         }
     }
 
-    public static unsafe string? GetOptionalString(this ref PROPVARIANT prop)
+}
+
+public static class PROPVARIANTExtension
+{
+    public static string ReadString(this ref PROPVARIANT prop)
+    {
+        if (prop.varType != VARENUM.VT_BSTR)
+        {
+            throw new ArgumentException($"Expect VT_BSTR but got {Enum.GetName(prop.varType)}");
+        }
+
+        return prop.ptrVal.ReadBSTR();
+    }
+
+    public static string? ReadOptionalString(this ref PROPVARIANT prop)
     {
         if (prop.varType == VARENUM.VT_EMPTY)
         {
@@ -127,21 +136,10 @@ public static class PROPVARIANTExtension
             throw new ArgumentException($"Expect VT_BSTR but got {Enum.GetName(prop.varType)}");
         }
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            return Marshal.PtrToStringBSTR(prop.ptrVal)!;
-        }
-        else
-        {
-            // The non-Windows port of BSTR uses the native wchar_t, which uses UTF-32 with bits length.
-            // See: MyWindows.h
-            //     typedef wchar_t WCHAR;
-            //     typedef WCHAR OLECHAR;
-            return utf32.GetString(new ReadOnlySpan<byte>((byte*)prop.ptrVal, *(((int*)prop.ptrVal) - 1)));
-        }
+        return prop.ptrVal.ReadBSTR();
     }
 
-    public static unsafe T* GetPointer<T>(this ref PROPVARIANT prop) where T : unmanaged
+    public static unsafe T* ReadPointer<T>(this ref PROPVARIANT prop) where T : unmanaged
     {
         if (prop.varType == VARENUM.VT_EMPTY)
         {
@@ -152,6 +150,51 @@ public static class PROPVARIANTExtension
             throw new ArgumentException($"Expect VT_BSTR but got {Enum.GetName(prop.varType)}");
         }
         return (T*)prop.ptrVal;
+    }
+
+    public static bool ReadBool(this ref PROPVARIANT prop)
+    {
+        if (prop.varType != VARENUM.VT_BOOL)
+        {
+            throw new ArgumentException($"Expect VT_BOOL but got {Enum.GetName(prop.varType)}");
+        }
+        return prop.boolVal;
+    }
+
+    public static bool ReadBool(this ref PROPVARIANT prop, bool defaultValue)
+    {
+        if (prop.varType == VARENUM.VT_EMPTY)
+        {
+            return defaultValue;
+        }
+        if (prop.varType != VARENUM.VT_BOOL)
+        {
+            throw new ArgumentException($"Expect VT_BOOL but got {Enum.GetName(prop.varType)}");
+        }
+        return prop.boolVal;
+    }
+
+    public static unsafe string Format(this ref PROPVARIANT prop) {
+        switch (prop.varType)
+        {
+            case VARENUM.VT_EMPTY:
+                return "";
+
+            case VARENUM.VT_BOOL:
+                return prop.boolVal.ToString();
+
+            case VARENUM.VT_UI4:
+                return (prop.bVal & 0xF).ToString();
+
+            case VARENUM.VT_UI8:
+                return prop.bVal.ToString();
+
+            case VARENUM.VT_BSTR:
+                return prop.ptrVal.ReadBSTR();
+
+            default:
+                throw new Exception($"Unexpected property type {Enum.GetName(prop.varType)}");
+        }
     }
 }
 
