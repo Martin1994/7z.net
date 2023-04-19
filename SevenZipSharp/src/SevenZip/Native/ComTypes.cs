@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace SevenZip.Native.Com;
+namespace SevenZip.Native;
 
 [StructLayout(LayoutKind.Sequential, Pack=0)]
 public struct PROPARRAY
@@ -172,6 +172,15 @@ public static class PROPVARIANTExtension
             throw new ArgumentException($"Expect VT_BOOL but got {Enum.GetName(prop.varType)}");
         }
         return prop.boolVal;
+    }
+    
+    public static ulong ReadUInt64(this ref PROPVARIANT prop)
+    {
+        if (prop.varType != VARENUM.VT_UI8)
+        {
+            throw new ArgumentException($"Expect VT_UI8 but got {Enum.GetName(prop.varType)}");
+        }
+        return prop.ulVal;
     }
 
     public static unsafe string Format(this ref PROPVARIANT prop) {

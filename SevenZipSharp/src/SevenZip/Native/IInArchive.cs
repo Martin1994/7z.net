@@ -2,7 +2,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace SevenZip.Native.Com;
+namespace SevenZip.Native;
 
 [Guid("23170F69-40C1-278A-0000-000600600000")]
 public unsafe struct IInArchive
@@ -35,6 +35,19 @@ public unsafe struct IInArchive
     public void GetProperty(uint index, PROPID propID, out PROPVARIANT prop)
     {
         VTableIInArchive.FromPointer(lpVtbl).GetProperty(in this, index, propID, out prop).EnsureSuccess();
+    }
+
+    public void Extract(Span<uint> indexes, NAskMode mode, in IArchiveExtractCallback callback)
+    {
+        fixed (uint* ptr = indexes)
+        {
+            VTableIInArchive.FromPointer(lpVtbl).Extract(in this, ptr, (uint)indexes.Length, mode, in callback).EnsureSuccess();
+        }
+    }
+
+    public void Extract(NAskMode mode, in IArchiveExtractCallback callback)
+    {
+        VTableIInArchive.FromPointer(lpVtbl).Extract(in this, null, 0xFFFFFFFF, mode, in callback).EnsureSuccess();
     }
 
     public void GetArchiveProperty(PROPID propID, out PROPVARIANT prop)
@@ -72,7 +85,7 @@ public unsafe struct VTableIInArchive
     public delegate* unmanaged[Thiscall]<in IInArchive, HRESULT> Close;
     public delegate* unmanaged[Thiscall]<in IInArchive, out uint, HRESULT> GetNumberOfItem;
     public delegate* unmanaged[Thiscall]<in IInArchive, uint, PROPID, out PROPVARIANT, HRESULT> GetProperty;
-    public delegate* unmanaged[Thiscall]<in IInArchive, uint*, uint, int, void*, HRESULT> Extract;
+    public delegate* unmanaged[Thiscall]<in IInArchive, uint*, uint, NAskMode, in IArchiveExtractCallback, HRESULT> Extract;
     public delegate* unmanaged[Thiscall]<in IInArchive, PROPID, out PROPVARIANT, HRESULT> GetArchiveProperty;
     public delegate* unmanaged[Thiscall]<in IInArchive, out uint, HRESULT> GetNumberOfProperties;
     public delegate* unmanaged[Thiscall]<in IInArchive, uint, void*, PROPID*, VARENUM*, HRESULT> GetPropertyInfo;

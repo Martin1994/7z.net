@@ -1,5 +1,4 @@
 using SevenZip.Native;
-using SevenZip.Native.Com;
 
 namespace SevenZip;
 

@@ -1,7 +1,4 @@
-using System.Collections.ObjectModel;
 using SevenZip.Native;
-using SevenZip.Native.Com;
-
 namespace SevenZip;
 
 public struct SevenZipProperty
@@ -10,18 +7,16 @@ public struct SevenZipProperty
     public string Value { get; init; }
 }
 
-// Note: Neither 7z nor its .NET wrapper is thread safe
+// Note: Neither 7-zip nor this .NET wrapper is thread safe
 public unsafe class SevenZipInArchive : IDisposable
 {
     private readonly IInArchive* _arc;
-    private readonly ManagedInStream _stream;
+    private readonly InStreamProxy _stream;
     private bool _disposedValue;
-    private readonly Lazy<SevenZipFileTree> _fileTree;
-    public SevenZipFileTree FileTree => _fileTree.Value;
+    private readonly Lazy<SevenZipItemTree> _fileTree;
+    public SevenZipItemTree FileTree => _fileTree.Value;
 
-    public uint Count => _arc->GetNumberOfItem();
-
-    private SevenZipFileTree BuildFileTree()
+    private SevenZipItemTree BuildItemTree()
     {
         PROPVARIANT prop;
         uint num = this.Count;
@@ -30,7 +25,7 @@ public unsafe class SevenZipInArchive : IDisposable
             throw new IndexOutOfRangeException($"The archive contains too many items: {num}");
         }
 
-        SevenZipFileTree tree = new((int)num);
+        SevenZipItemTree tree = new((int)num);
         for (uint i = 0; i < num; i++)
         {
             _arc->GetProperty(i, PROPID.kpidIsDeleted, out prop);
@@ -45,10 +40,23 @@ public unsafe class SevenZipInArchive : IDisposable
             _arc->GetProperty(i, PROPID.kpidIsDir, out prop);
             bool isDir = prop.ReadBool();
 
-            tree.Add((int)i, path, isDir);
+            tree.Add(i, path, isDir);
         }
         return tree;
     }
+
+    public uint Count => _arc->GetNumberOfItem();
+
+    public ulong PhysicalSize
+    {
+        get
+        {
+            _arc->GetArchiveProperty(PROPID.kpidPhySize, out var prop);
+            return prop.ReadUInt64();
+        }
+    }
+
+    public SevenZipItem this[uint index] => new SevenZipItem(_arc, index);
 
     public unsafe SevenZipInArchive(string filename, Stream stream)
     {
@@ -60,9 +68,23 @@ public unsafe class SevenZipInArchive : IDisposable
             throw new FormatException("Cannot derive archive type from the given file.");
         }
         _arc = SevenZipLibrary.CreateObject<IInArchive>(format.ClassId);
-        _stream = new ManagedInStream(stream);
+        _stream = new InStreamProxy(stream);
         _arc->Open(in _stream.ComObject);
-        _fileTree = new Lazy<SevenZipFileTree>(BuildFileTree);
+        _fileTree = new Lazy<SevenZipItemTree>(BuildItemTree);
+    }
+
+    public void Extract(Span<uint> indexes, NAskMode mode, in IManagedArchiveExtractCallback callback)
+    {
+        indexes.Sort();
+
+        using var callbackProxy = new ArchiveExtractCallbackProxy(callback);
+        _arc->Extract(indexes, mode, in callbackProxy.ComObject);
+    }
+
+    public void ExtractAll(NAskMode mode, in IManagedArchiveExtractCallback callback)
+    {
+        using var callbackProxy = new ArchiveExtractCallbackProxy(callback);
+        _arc->Extract(mode, in callbackProxy.ComObject);
     }
 
     protected virtual void Dispose(bool disposing)

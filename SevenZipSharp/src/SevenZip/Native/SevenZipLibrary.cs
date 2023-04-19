@@ -1,4 +1,3 @@
-using SevenZip.Native.Com;
 using System.Runtime.InteropServices;
 
 namespace SevenZip.Native;
@@ -30,7 +29,7 @@ public class SevenZipLibrary
     }
 }
 
-public enum NMethodPropID
+public enum NMethodPropID : uint
 {
     kID,
     kName,
@@ -45,7 +44,7 @@ public enum NMethodPropID
     kIsFilter
 }
 
-public enum NHandlerPropID
+public enum NHandlerPropID : uint
 {
     kName = 0,        // VT_BSTR
     kClassID,         // binary GUID in VT_BSTR
@@ -66,7 +65,7 @@ public struct CLSID {
     public Guid Guid;
 }
 
-public enum PROPID
+public enum PROPID : uint
 {
     kpidNoProperty = 0,
     kpidMainSubfile,
@@ -177,3 +176,24 @@ public enum PROPID
     kpidUserDefined = 0x10000
 }
 
+public enum NAskMode : int
+{
+    kExtract = 0,
+    kTest,
+    kSkip,
+    kReadExternal
+}
+
+public enum NOperationResult : int
+{
+    kOK = 0,
+    kUnsupportedMethod,
+    kDataError,
+    kCRCError,
+    kUnavailable,
+    kUnexpectedEnd,
+    kDataAfterEnd,
+    kIsNotArc,
+    kHeadersError,
+    kWrongPassword
+}
