@@ -7,7 +7,7 @@ public unsafe struct VTableIUnknown
     public const int UNIX_COM_DESCTRUCTOR_COUNT = 2;
 
     public static readonly int vTableOffset;
-    
+
     public static ref VTableIUnknown FromPointer(void** lpVtbl) => ref *(VTableIUnknown*)(lpVtbl);
 
     [UnmanagedCallersOnly]

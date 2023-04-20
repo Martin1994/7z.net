@@ -17,7 +17,7 @@ public unsafe struct VTableIArchiveExtractCallback
 
     public delegate* unmanaged<IArchiveExtractCallback*, ulong, HRESULT> SetTotal;
     public delegate* unmanaged<IArchiveExtractCallback*, ulong*, HRESULT> SetCompleted;
-    public delegate* unmanaged<IArchiveExtractCallback*, uint, void**, NAskMode, HRESULT> GetStream;
+    public delegate* unmanaged<IArchiveExtractCallback*, uint, ISequentialOutStream**, NAskMode, HRESULT> GetStream;
     public delegate* unmanaged<IArchiveExtractCallback*, NAskMode, HRESULT> PrepareOperation;
     public delegate* unmanaged<IArchiveExtractCallback*, NOperationResult, HRESULT> SetOperationResult;
 }
@@ -26,12 +26,12 @@ public interface IManagedArchiveExtractCallback
 {
     void SetTotal(ulong size);
     void SetCompleted(in ulong size);
-    unsafe void GetStream(uint index, out void* outStream, NAskMode askExtractMode);
+    Stream? GetStream(uint index, NAskMode askExtractMode);
     void PrepareOperation(NAskMode askExtractMode);
     void SetOperationResult(NOperationResult opRes);
 }
 
-public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<IArchiveExtractCallback>
+public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtractCallbackProxy, IArchiveExtractCallback>, IDisposable
 {
     private struct ManagedVTable
     {
@@ -68,19 +68,15 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<IArchiveExtrac
         {
             return HRESULT.E_INVALIDARG;
         }
-        
+
         try
         {
-            ((ArchiveExtractCallbackProxy)proxy)._implementation.SetTotal(size);
+            proxy._implementation.SetTotal(size);
             return HRESULT.S_OK;
         }
-        catch (NotImplementedException)
+        catch (Exception e)
         {
-            return HRESULT.E_NOTIMPL;
-        }
-        catch (Exception)
-        {
-            return HRESULT.E_FAIL;
+            return (HRESULT)e.HResult;
         }
     }
 
@@ -91,42 +87,48 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<IArchiveExtrac
         {
             return HRESULT.E_INVALIDARG;
         }
-        
+
         try
         {
-            ((ArchiveExtractCallbackProxy)proxy)._implementation.SetCompleted(in *size);
+            proxy._implementation.SetCompleted(in *size);
             return HRESULT.S_OK;
         }
-        catch (NotImplementedException)
+        catch (Exception e)
         {
-            return HRESULT.E_NOTIMPL;
-        }
-        catch (Exception)
-        {
-            return HRESULT.E_FAIL;
+            return (HRESULT)e.HResult;
         }
     }
 
     [UnmanagedCallersOnly]
-    private static HRESULT ManagedGetStream(IArchiveExtractCallback* that, uint index, void** outStream, NAskMode askExtractMode)
+    private static HRESULT ManagedGetStream(IArchiveExtractCallback* that, uint index, ISequentialOutStream** outStream, NAskMode askExtractMode)
     {
         if (!TryGetProxy(that->id, out var proxy))
         {
             return HRESULT.E_INVALIDARG;
         }
-        
+
         try
         {
-            ((ArchiveExtractCallbackProxy)proxy)._implementation.GetStream(index, out *outStream, askExtractMode);
+            Stream? stream = proxy._implementation.GetStream(index, askExtractMode);
+            if (stream == null)
+            {
+                *outStream = null;
+            }
+            else
+            {
+                proxy._currentStreamProxy?.Dispose();
+                proxy._currentStreamProxy = new SequentialOutStreamProxy(stream);
+                fixed (ISequentialOutStream* comPtr = &proxy._currentStreamProxy.ComObject)
+                {
+                    *outStream = comPtr;
+                }
+            }
+
             return HRESULT.S_OK;
         }
-        catch (NotImplementedException)
+        catch (Exception e)
         {
-            return HRESULT.E_NOTIMPL;
-        }
-        catch (Exception)
-        {
-            return HRESULT.E_FAIL;
+            return (HRESULT)e.HResult;
         }
     }
 
@@ -137,19 +139,15 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<IArchiveExtrac
         {
             return HRESULT.E_INVALIDARG;
         }
-        
+
         try
         {
-            ((ArchiveExtractCallbackProxy)proxy)._implementation.PrepareOperation(askExtractMode);
+            proxy._implementation.PrepareOperation(askExtractMode);
             return HRESULT.S_OK;
         }
-        catch (NotImplementedException)
+        catch (Exception e)
         {
-            return HRESULT.E_NOTIMPL;
-        }
-        catch (Exception)
-        {
-            return HRESULT.E_FAIL;
+            return (HRESULT)e.HResult;
         }
     }
 
@@ -160,23 +158,21 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<IArchiveExtrac
         {
             return HRESULT.E_INVALIDARG;
         }
-        
+
         try
         {
-            ((ArchiveExtractCallbackProxy)proxy)._implementation.SetOperationResult(opRes);
+            proxy._implementation.SetOperationResult(opRes);
             return HRESULT.S_OK;
         }
-        catch (NotImplementedException)
+        catch (Exception e)
         {
-            return HRESULT.E_NOTIMPL;
-        }
-        catch (Exception)
-        {
-            return HRESULT.E_FAIL;
+            return (HRESULT)e.HResult;
         }
     }
 
     private readonly IManagedArchiveExtractCallback _implementation;
+    private SequentialOutStreamProxy? _currentStreamProxy;
+    private bool _disposedValue;
 
     public ArchiveExtractCallbackProxy(IManagedArchiveExtractCallback implementation)
     {
@@ -186,5 +182,20 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<IArchiveExtrac
             ComObject.lpVtbl = (void**)lpVtbl;
         }
         ComObject.id = _id;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (!_disposedValue)
+        {
+            if (disposing)
+            {
+                _currentStreamProxy?.Dispose();
+                _currentStreamProxy = null;
+            }
+
+            _disposedValue = true;
+        }
+        base.Dispose(disposing);
     }
 }

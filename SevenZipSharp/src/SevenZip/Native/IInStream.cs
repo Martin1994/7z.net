@@ -19,7 +19,7 @@ public unsafe struct VTableIInStream
     public delegate* unmanaged<IInStream*, long, uint, ulong*, HRESULT> Seek;
 }
 
-public unsafe class InStreamProxy : ManagedComProxy<IInStream>
+public unsafe class InStreamProxy : ManagedComProxy<InStreamProxy, IInStream>
 {
     private struct ManagedVTable
     {
@@ -53,11 +53,21 @@ public unsafe class InStreamProxy : ManagedComProxy<IInStream>
         {
             return HRESULT.E_INVALIDARG;
         }
-        if (size >= 0x80000000) {
+        if (size >= 0x80000000)
+        {
             return HRESULT.E_INVALIDARG;
         }
-        *processedSize = (uint)((InStreamProxy)proxy)._implementation.Read(new Span<byte>(data, (int)size));
-        return HRESULT.S_OK;
+
+        try
+        {
+            *processedSize = (uint)proxy._implementation.Read(new Span<byte>(data, (int)size));
+            return HRESULT.S_OK;
+        }
+        catch (Exception e)
+        {
+            *processedSize = 0;
+            return (HRESULT)e.HResult;
+        }
     }
 
     [UnmanagedCallersOnly]
@@ -67,11 +77,19 @@ public unsafe class InStreamProxy : ManagedComProxy<IInStream>
         {
             return HRESULT.E_INVALIDARG;
         }
-        ulong newPos = (ulong)((InStreamProxy)proxy)._implementation.Seek(offset, (SeekOrigin)seekOrigin);
-        if (newPosition != null) {
-            *newPosition = newPos;
+
+        try
+        {
+            ulong newPos = (ulong)proxy._implementation.Seek(offset, (SeekOrigin)seekOrigin);
+            if (newPosition != null) {
+                *newPosition = newPos;
+            }
+            return HRESULT.S_OK;
         }
-        return HRESULT.S_OK;
+        catch (Exception e)
+        {
+            return (HRESULT)e.HResult;
+        }
     }
 
     private readonly Stream _implementation;

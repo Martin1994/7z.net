@@ -92,11 +92,8 @@ public unsafe class SevenZipInArchive : IDisposable
         if (!_disposedValue)
         {
             if (disposing)
-            {   
-                if (_stream != null)
-                {
-                    _stream.Dispose();
-                }
+            {
+                _stream?.Dispose();
             }
 
             if (_arc != null)

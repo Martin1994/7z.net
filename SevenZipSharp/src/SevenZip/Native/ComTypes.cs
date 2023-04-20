@@ -173,7 +173,31 @@ public static class PROPVARIANTExtension
         }
         return prop.boolVal;
     }
-    
+
+    public static uint ReadUInt32(this ref PROPVARIANT prop)
+    {
+        if (prop.varType != VARENUM.VT_UI4)
+        {
+            throw new ArgumentException($"Expect VT_UI4 but got {Enum.GetName(prop.varType)}");
+        }
+        return prop.uintVal;
+    }
+
+    public static bool TryReadUInt32(this ref PROPVARIANT prop, out uint value)
+    {
+        if (prop.varType == VARENUM.VT_EMPTY)
+        {
+            value = default;
+            return false;
+        }
+        if (prop.varType != VARENUM.VT_UI4)
+        {
+            throw new ArgumentException($"Expect VT_UI4 but got {Enum.GetName(prop.varType)}");
+        }
+        value = prop.uintVal;
+        return true;
+    }
+
     public static ulong ReadUInt64(this ref PROPVARIANT prop)
     {
         if (prop.varType != VARENUM.VT_UI8)
