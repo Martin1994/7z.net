@@ -13,20 +13,15 @@ var arc = new SevenZipInArchive(path, stream);
 
 Console.WriteLine("Items: {0}", arc.Count);
 
-PrintTree(arc.FileTree);
+PrintNodes(arc.ItemTree, "|-");
 
 arc.ExtractAll(NAskMode.kExtract, new TestExtractCallback(arc, extractDest));
 
 Console.WriteLine("Ended");
 
-void PrintTree(SevenZipItemTree tree)
+void PrintNodes(SevenZipItemNode parent, string prefix)
 {
-    PrintNodes(tree, tree.List(), "|-");
-}
-
-void PrintNodes(SevenZipItemTree tree, SevenZipItemNode[] nodes, string prefix)
-{
-    foreach (var node in nodes.OrderBy(n => n.Name))
+    foreach (var node in parent.Children.OrderBy(n => n.Name))
     {
         if (node.Type == SevenZipItemType.File)
         {
@@ -35,7 +30,7 @@ void PrintNodes(SevenZipItemTree tree, SevenZipItemNode[] nodes, string prefix)
         else
         {
             Console.WriteLine("{0}+ {1}", prefix, node.Name);
-            PrintNodes(tree, tree.List(node.Index), prefix.Replace('-', ' ') + "|-");
+            PrintNodes(node, prefix.Replace('-', ' ') + "|-");
         }
     }
 }

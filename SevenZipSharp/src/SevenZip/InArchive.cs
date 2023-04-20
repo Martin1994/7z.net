@@ -13,8 +13,8 @@ public unsafe class SevenZipInArchive : IDisposable
     private readonly IInArchive* _arc;
     private readonly InStreamProxy _streamProxy;
     private bool _disposedValue;
-    private readonly Lazy<SevenZipItemTree> _fileTree;
-    public SevenZipItemTree FileTree => _fileTree.Value;
+    private readonly Lazy<SevenZipItemTree> _itemTree;
+    public SevenZipItemNode ItemTree => _itemTree.Value.Root;
 
     private SevenZipItemTree BuildItemTree()
     {
@@ -70,7 +70,7 @@ public unsafe class SevenZipInArchive : IDisposable
         _arc = SevenZipLibrary.CreateObject<IInArchive>(format.ClassId);
         _streamProxy = new InStreamProxy(stream);
         _arc->Open(in _streamProxy.ComObject);
-        _fileTree = new Lazy<SevenZipItemTree>(BuildItemTree);
+        _itemTree = new Lazy<SevenZipItemTree>(BuildItemTree);
     }
 
     public void Extract(Span<uint> indexes, NAskMode mode, in IManagedArchiveExtractCallback callback)

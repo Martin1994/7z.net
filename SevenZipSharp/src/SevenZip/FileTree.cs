@@ -2,11 +2,53 @@ namespace SevenZip;
 
 public struct SevenZipItemNode
 {
-    public uint Id { get; init; } // Used by a 7z archive
-    public SevenZipItemType Type { get; init; }
-    public string Name { get; init; }
-    public int Index { get; init; } // Used by the file tree
-    public int ParentIndex { get; init; } // Used by the file tree
+    private readonly SevenZipItemTree _tree;
+    private readonly int _index;
+
+    public SevenZipItemNode(SevenZipItemTree tree, int index)
+    {
+        _tree = tree;
+        _index = index;
+    }
+
+    public string Name => _tree.Nodes[_index].Name;
+    public uint Id => _tree.Nodes[_index].Id;
+    public SevenZipItemType Type => _tree.Nodes[_index].Type;
+
+    public IEnumerable<SevenZipItemNode> Children
+    {
+        get
+        {
+            if (Type != SevenZipItemType.Directory)
+            {
+                throw new InvalidOperationException("Only a directory contains children.");
+            }
+
+            foreach (int child in _tree.Nodes[_index].Children!.Values)
+            {
+                yield return new SevenZipItemNode(
+                    tree: _tree,
+                    index: child
+                );
+            }
+        }
+    }
+
+    public SevenZipItemNode this[string childName]
+    {
+        get
+        {
+            if (Type != SevenZipItemType.Directory)
+            {
+                throw new InvalidOperationException("Only a directory contains children.");
+            }
+
+            return new SevenZipItemNode(
+                tree: _tree,
+                index: _tree.Nodes[_index].Children![childName]
+            );
+        }
+    }
 }
 
 public class SevenZipItemTree
@@ -16,7 +58,7 @@ public class SevenZipItemTree
     private const uint ROOT_ID = 0xFFFFFFFF;
     private const uint UNTRACKED_DIR_ID = 0xFFFFFFFE;
 
-    private struct Node
+    internal struct Node
     {
         public uint Id;
         public readonly SevenZipItemType Type;
@@ -34,11 +76,16 @@ public class SevenZipItemTree
         }
     }
 
-    private readonly List<Node> _nodes;
+    internal readonly List<Node> Nodes;
+
+    public SevenZipItemNode Root => new SevenZipItemNode(
+        tree: this,
+        index: ROOT_INDEX
+    );
 
     public SevenZipItemTree(int initialCapacity)
     {
-        _nodes = new List<Node>(initialCapacity + 1)
+        Nodes = new List<Node>(initialCapacity + 1)
         {
             new Node(ROOT_ID, SevenZipItemType.Directory, "", ROOT_INDEX)
         };
@@ -60,58 +107,30 @@ public class SevenZipItemTree
         }
         else
         {
-            var parentNode = _nodes[parentIndex];
-            parentNode.Children!.Add(name, _nodes.Count);
-            _nodes.Add(new Node(id, isDir ? SevenZipItemType.Directory : SevenZipItemType.File, name, parentIndex));
+            var parentNode = Nodes[parentIndex];
+            parentNode.Children!.Add(name, Nodes.Count);
+            Nodes.Add(new Node(id, isDir ? SevenZipItemType.Directory : SevenZipItemType.File, name, parentIndex));
         }
     }
 
     private int GetOrAddDirectory(uint id, int parentIndex, string name)
     {
-        var parentNode = _nodes[parentIndex];
+        var parentNode = Nodes[parentIndex];
         if (parentNode.Children!.TryGetValue(name, out var existingNodeIndex))
         {
             if (id != UNTRACKED_DIR_ID)
             {
                 // Update ID
-                var node = _nodes[existingNodeIndex];
+                var node = Nodes[existingNodeIndex];
                 node.Id = id;
-                _nodes[existingNodeIndex] = node;
+                Nodes[existingNodeIndex] = node;
             }
             return existingNodeIndex;
         }
-        
-        parentNode.Children!.Add(name, _nodes.Count);
-        int index = _nodes.Count;
-        _nodes.Add(new Node(id, SevenZipItemType.Directory, name, parentIndex));
+
+        parentNode.Children!.Add(name, Nodes.Count);
+        int index = Nodes.Count;
+        Nodes.Add(new Node(id, SevenZipItemType.Directory, name, parentIndex));
         return index;
     }
-
-    public SevenZipItemNode[] List(int index = ROOT_INDEX)
-    {
-        if (index < 0 || index > _nodes.Count)
-        {
-            throw new IndexOutOfRangeException($"Invalid file tree index: {index}. Expected in range [0, {_nodes.Count - 1}]");
-        }
-
-        Node node = _nodes[index];
-
-        if (node.Type != SevenZipItemType.Directory)
-        {
-            throw new ArgumentException($"{node.Name} is file, not a directory.");
-        }
-
-        return node.Children!.Values.Select(childIndex => {
-            var child = _nodes[childIndex];
-            return new SevenZipItemNode()
-            {
-                Id = child.Id,
-                Type = child.Type,
-                Name = child.Name,
-                Index = childIndex,
-                ParentIndex = child.ParentIndex
-            };
-        }).ToArray();
-    }
 }
-
