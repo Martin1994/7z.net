@@ -259,10 +259,21 @@ public static class HRESULTExtension
 
 public class SevenZipComException : Exception
 {
+    private static string GetExceptionMessage(HRESULT code, string methodName)
+    {
+        return $"7-zip COM invocation {methodName} returned unsuccessful result: 0x{(uint)code:X} {Enum.GetName(code)}";
+    }
+
     public HRESULT Code { get; }
 
     public SevenZipComException(HRESULT code, string methodName)
-        : base($"7-zip COM invocation {methodName} returned unsuccessful result: 0x{(uint)code:X} {Enum.GetName(code)}")
+        : base(GetExceptionMessage(code, methodName))
+    {
+        Code = code;
+    }
+
+    public SevenZipComException(HRESULT code, string methodName, Exception innerException)
+        : base(GetExceptionMessage(code, methodName), innerException)
     {
         Code = code;
     }

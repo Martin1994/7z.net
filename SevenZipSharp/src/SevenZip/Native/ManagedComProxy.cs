@@ -18,6 +18,7 @@ public abstract unsafe class ManagedComProxy<TSelf, TCom> : IDisposable where TS
     private readonly TCom* _com;
     public ref TCom ComObject => ref *_com;
     private bool _disposedValue;
+    private List<Exception>? _pendingExceptions = null;
 
     public ManagedComProxy()
     {
@@ -34,6 +35,45 @@ public abstract unsafe class ManagedComProxy<TSelf, TCom> : IDisposable where TS
             Marshal.FreeHGlobal((nint)this._com);
             _disposedValue = true;
         }
+    }
+
+    protected HRESULT PersistAndExtractException(Exception ex)
+    {
+        if (_pendingExceptions == null)
+        {
+            _pendingExceptions = new List<Exception>();
+        }
+        _pendingExceptions.Add(ex);
+        return (HRESULT)ex.HResult;
+    }
+
+    public void ThrowPendingException()
+    {
+        var ex = PopPendingException();
+        if (ex != null)
+        {
+            throw ex;
+        }
+    }
+
+    public Exception? PopPendingException()
+    {
+        if (_pendingExceptions == null)
+        {
+            return null;
+        }
+
+        Exception ex;
+        if (_pendingExceptions.Count == 1)
+        {
+            ex = _pendingExceptions[0];
+        }
+        else
+        {
+            ex = new AggregateException(_pendingExceptions);
+        }
+        _pendingExceptions = null;
+        return ex;
     }
 
     ~ManagedComProxy()

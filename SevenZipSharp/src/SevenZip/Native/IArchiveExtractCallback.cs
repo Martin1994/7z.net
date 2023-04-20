@@ -76,7 +76,7 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtract
         }
         catch (Exception e)
         {
-            return (HRESULT)e.HResult;
+            return proxy.PersistAndExtractException(e);
         }
     }
 
@@ -95,7 +95,7 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtract
         }
         catch (Exception e)
         {
-            return (HRESULT)e.HResult;
+            return proxy.PersistAndExtractException(e);
         }
     }
 
@@ -128,7 +128,7 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtract
         }
         catch (Exception e)
         {
-            return (HRESULT)e.HResult;
+            return proxy.PersistAndExtractException(e);
         }
     }
 
@@ -147,7 +147,7 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtract
         }
         catch (Exception e)
         {
-            return (HRESULT)e.HResult;
+            return proxy.PersistAndExtractException(e);
         }
     }
 
@@ -166,7 +166,7 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtract
         }
         catch (Exception e)
         {
-            return (HRESULT)e.HResult;
+            return proxy.PersistAndExtractException(e);
         }
     }
 

@@ -64,7 +64,7 @@ public unsafe class SequentialOutStreamProxy : ManagedComProxy<SequentialOutStre
         catch (Exception e)
         {
             *processedSize = 0;
-            return (HRESULT)e.HResult;
+            return proxy.PersistAndExtractException(e);
         }
     }
 

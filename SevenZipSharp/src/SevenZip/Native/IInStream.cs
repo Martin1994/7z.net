@@ -66,7 +66,7 @@ public unsafe class InStreamProxy : ManagedComProxy<InStreamProxy, IInStream>
         catch (Exception e)
         {
             *processedSize = 0;
-            return (HRESULT)e.HResult;
+            return proxy.PersistAndExtractException(e);
         }
     }
 
@@ -88,7 +88,7 @@ public unsafe class InStreamProxy : ManagedComProxy<InStreamProxy, IInStream>
         }
         catch (Exception e)
         {
-            return (HRESULT)e.HResult;
+            return proxy.PersistAndExtractException(e);
         }
     }
 

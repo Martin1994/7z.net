@@ -11,7 +11,7 @@ public struct SevenZipProperty
 public unsafe class SevenZipInArchive : IDisposable
 {
     private readonly IInArchive* _arc;
-    private readonly InStreamProxy _stream;
+    private readonly InStreamProxy _streamProxy;
     private bool _disposedValue;
     private readonly Lazy<SevenZipItemTree> _fileTree;
     public SevenZipItemTree FileTree => _fileTree.Value;
@@ -61,15 +61,15 @@ public unsafe class SevenZipInArchive : IDisposable
     public unsafe SevenZipInArchive(string filename, Stream stream)
     {
         _arc = null;
-        _stream = null!;
+        _streamProxy = null!;
         SevenZipArchiveFormat? format = SevenZipArchiveFormat.FromPath(filename);
         if (format == null)
         {
             throw new FormatException("Cannot derive archive type from the given file.");
         }
         _arc = SevenZipLibrary.CreateObject<IInArchive>(format.ClassId);
-        _stream = new InStreamProxy(stream);
-        _arc->Open(in _stream.ComObject);
+        _streamProxy = new InStreamProxy(stream);
+        _arc->Open(in _streamProxy.ComObject);
         _fileTree = new Lazy<SevenZipItemTree>(BuildItemTree);
     }
 
@@ -78,13 +78,35 @@ public unsafe class SevenZipInArchive : IDisposable
         indexes.Sort();
 
         using var callbackProxy = new ArchiveExtractCallbackProxy(callback);
-        _arc->Extract(indexes, mode, in callbackProxy.ComObject);
+        try
+        {
+            _arc->Extract(indexes, mode, in callbackProxy.ComObject);
+        }
+        catch (SevenZipComException ex)
+        {
+            Exception? inner = callbackProxy.PopPendingException();
+            if (inner != null)
+            {
+                throw new SevenZipComException(ex.Code, ex.Message, inner);
+            }
+        }
     }
 
     public void ExtractAll(NAskMode mode, in IManagedArchiveExtractCallback callback)
     {
         using var callbackProxy = new ArchiveExtractCallbackProxy(callback);
-        _arc->Extract(mode, in callbackProxy.ComObject);
+        try
+        {
+            _arc->Extract(mode, in callbackProxy.ComObject);
+        }
+        catch (SevenZipComException ex)
+        {
+            Exception? inner = callbackProxy.PopPendingException();
+            if (inner != null)
+            {
+                throw new SevenZipComException(ex.Code, ex.Message, inner);
+            }
+        }
     }
 
     protected virtual void Dispose(bool disposing)
@@ -93,7 +115,7 @@ public unsafe class SevenZipInArchive : IDisposable
         {
             if (disposing)
             {
-                _stream?.Dispose();
+                _streamProxy?.Dispose();
             }
 
             if (_arc != null)
