@@ -100,6 +100,26 @@ public struct SevenZipItemNode
             );
         }
     }
+
+    public SevenZipInArchive Archive => _tree.Archive;
+
+    public IEnumerable<SevenZipItemNode> Traverse()
+    {
+        yield return this;
+
+        if (Type == SevenZipItemType.File)
+        {
+            yield break;
+        }
+
+        foreach (var child in Children)
+        {
+            foreach (var childTraverse in child.Traverse())
+            {
+                yield return childTraverse;
+            }
+        }
+    }
 }
 
 public class SevenZipItemTree

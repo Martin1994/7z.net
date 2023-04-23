@@ -45,7 +45,17 @@ public unsafe class SevenZipInArchive : IDisposable
         _itemTree = new Lazy<SevenZipItemTree>(() => new SevenZipItemTree(this));
     }
 
-    public void Extract(Span<uint> indexes, NAskMode mode, in IManagedArchiveExtractCallback callback)
+    public void Extract(IEnumerable<SevenZipItemNode> nodes, NAskMode mode, in IManagedArchiveExtractCallback callback)
+    {
+        var indexes = nodes
+            .SelectMany(node => node.Traverse())
+            .Where(node => node.Type == SevenZipItemType.File)
+            .Select(node => node.Id)
+            .ToArray();
+        Extract(indexes, mode, callback);
+    }
+
+    private void Extract(Span<uint> indexes, NAskMode mode, in IManagedArchiveExtractCallback callback)
     {
         indexes.Sort();
 
