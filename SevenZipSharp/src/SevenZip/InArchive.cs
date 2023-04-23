@@ -11,39 +11,11 @@ public struct SevenZipProperty
 public unsafe class SevenZipInArchive : IDisposable
 {
     private readonly IInArchive* _arc;
+    public ref IInArchive Native => ref *_arc;
     private readonly InStreamProxy _streamProxy;
     private bool _disposedValue;
     private readonly Lazy<SevenZipItemTree> _itemTree;
     public SevenZipItemNode ItemTree => _itemTree.Value.Root;
-
-    private SevenZipItemTree BuildItemTree()
-    {
-        PROPVARIANT prop;
-        uint num = this.Count;
-        if (num >= 0x80000000)
-        {
-            throw new IndexOutOfRangeException($"The archive contains too many items: {num}");
-        }
-
-        SevenZipItemTree tree = new((int)num);
-        for (uint i = 0; i < num; i++)
-        {
-            _arc->GetProperty(i, PROPID.kpidIsDeleted, out prop);
-            bool deleted = prop.ReadBool(false);
-            if (deleted)
-            {
-                continue;
-            }
-
-            _arc->GetProperty(i, PROPID.kpidPath, out prop);
-            string path = prop.ReadOptionalString() ?? "";
-            _arc->GetProperty(i, PROPID.kpidIsDir, out prop);
-            bool isDir = prop.ReadBool();
-
-            tree.Add(i, path, isDir);
-        }
-        return tree;
-    }
 
     public uint Count => _arc->GetNumberOfItem();
 
@@ -56,7 +28,7 @@ public unsafe class SevenZipInArchive : IDisposable
         }
     }
 
-    public SevenZipItem this[uint index] => new SevenZipItem(_arc, index);
+    public SevenZipItem this[uint index] => new SevenZipItem(this, index);
 
     public unsafe SevenZipInArchive(string filename, Stream stream)
     {
@@ -70,7 +42,7 @@ public unsafe class SevenZipInArchive : IDisposable
         _arc = SevenZipLibrary.CreateObject<IInArchive>(format.ClassId);
         _streamProxy = new InStreamProxy(stream);
         _arc->Open(in _streamProxy.ComObject);
-        _itemTree = new Lazy<SevenZipItemTree>(BuildItemTree);
+        _itemTree = new Lazy<SevenZipItemTree>(() => new SevenZipItemTree(this));
     }
 
     public void Extract(Span<uint> indexes, NAskMode mode, in IManagedArchiveExtractCallback callback)

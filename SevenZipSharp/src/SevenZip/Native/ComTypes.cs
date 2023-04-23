@@ -207,6 +207,28 @@ public static class PROPVARIANTExtension
         return prop.ulVal;
     }
 
+    public static DateTime ReadFileTime(this ref PROPVARIANT prop)
+    {
+        if (prop.varType != VARENUM.VT_FILETIME)
+        {
+            throw new ArgumentException($"Expect VT_FILETIME but got {Enum.GetName(prop.varType)}");
+        }
+        return DateTime.FromFileTime((long)prop.filetime.dwHighDateTime << 32 | (uint)prop.filetime.dwLowDateTime);
+    }
+
+    public static DateTime ReadOptionalFileTime(this ref PROPVARIANT prop)
+    {
+        if (prop.varType == VARENUM.VT_EMPTY)
+        {
+            return default;
+        }
+        if (prop.varType != VARENUM.VT_FILETIME)
+        {
+            throw new ArgumentException($"Expect VT_FILETIME but got {Enum.GetName(prop.varType)}");
+        }
+        return DateTime.FromFileTime((long)prop.filetime.dwHighDateTime << 32 | (uint)prop.filetime.dwLowDateTime);
+    }
+
     public static unsafe string Format(this ref PROPVARIANT prop) {
         switch (prop.varType)
         {

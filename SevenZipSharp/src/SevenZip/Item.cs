@@ -8,12 +8,12 @@ public enum SevenZipItemType
     Directory
 }
 
-public unsafe struct SevenZipItem
+public struct SevenZipItem
 {
-    private readonly IInArchive* _arc;
+    private readonly SevenZipInArchive _arc;
     private readonly uint _index;
 
-    public SevenZipItem(IInArchive* arc, uint index)
+    public SevenZipItem(SevenZipInArchive arc, uint index)
     {
         _arc = arc;
         _index = index;
@@ -23,7 +23,7 @@ public unsafe struct SevenZipItem
     {
         get
         {
-            _arc->GetProperty(_index, PROPID.kpidIsDir, out var prop);
+            _arc.Native.GetProperty(_index, PROPID.kpidIsDir, out var prop);
             return prop.ReadBool() ? SevenZipItemType.Directory : SevenZipItemType.File;
         }
     }
@@ -32,10 +32,21 @@ public unsafe struct SevenZipItem
     {
         get
         {
-            _arc->GetProperty(_index, PROPID.kpidPath, out var prop);
+            _arc.Native.GetProperty(_index, PROPID.kpidPath, out var prop);
             return prop.ReadString();
         }
     }
+
+    public ulong Size
+    {
+        get
+        {
+            _arc.Native.GetProperty(_index, PROPID.kpidSize, out var prop);
+            return prop.ReadUInt64();
+        }
+    }
+
+    public string Name => System.IO.Path.GetFileName(Path);
 
     const uint FILE_ATTRIBUTE_UNIX_EXTENSION = 0x8000;
     const uint S_IFMT = 0xF000;
@@ -44,7 +55,7 @@ public unsafe struct SevenZipItem
     {
         get
         {
-            _arc->GetProperty(_index, PROPID.kpidAttrib, out var prop);
+            _arc.Native.GetProperty(_index, PROPID.kpidAttrib, out var prop);
             uint windowsAttr = prop.ReadUInt32();
 
             if ((windowsAttr & FILE_ATTRIBUTE_UNIX_EXTENSION) > 0)
@@ -80,9 +91,45 @@ public unsafe struct SevenZipItem
     {
         get
         {
-            _arc->GetProperty(_index, PROPID.kpidAttrib, out var prop);
+            _arc.Native.GetProperty(_index, PROPID.kpidAttrib, out var prop);
             uint attr = prop.ReadUInt32();
             return (FileAttributes)(attr & 0x7FFF); // 7z only supports attributes up to 0x7FFF
+        }
+    }
+
+    public DateTime ModifiedTime
+    {
+        get
+        {
+            _arc.Native.GetProperty(_index, PROPID.kpidMTime, out var prop);
+            return prop.ReadOptionalFileTime();
+        }
+    }
+
+    public DateTime CreatedTime
+    {
+        get
+        {
+            _arc.Native.GetProperty(_index, PROPID.kpidCTime, out var prop);
+            return prop.ReadOptionalFileTime();
+        }
+    }
+
+    public DateTime AccessedTime
+    {
+        get
+        {
+            _arc.Native.GetProperty(_index, PROPID.kpidATime, out var prop);
+            return prop.ReadOptionalFileTime();
+        }
+    }
+
+    public string? Comment
+    {
+        get
+        {
+            _arc.Native.GetProperty(_index, PROPID.kpidComment, out var prop);
+            return prop.ReadOptionalString();
         }
     }
 }
