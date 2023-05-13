@@ -31,7 +31,7 @@ public interface IManagedArchiveExtractCallback
     void SetOperationResult(NOperationResult opRes);
 }
 
-public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtractCallbackProxy, IArchiveExtractCallback>, IDisposable
+public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtractCallbackProxy, IArchiveExtractCallback, IManagedArchiveExtractCallback>, IDisposable
 {
     private struct ManagedVTable
     {
@@ -48,7 +48,7 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtract
             void** lpVtbl = (void**)ptr;
 
             ref VTableIUnknown vTableIUnknown = ref VTableIUnknown.FromPointer(lpVtbl);
-            vTableIUnknown.QueryInterface = &VTableIUnknown.NoopQueryInterface;
+            vTableIUnknown.QueryInterface = &ManagedQueryInterface;
             vTableIUnknown.AddRef = &VTableIUnknown.NoopAddRef;
             vTableIUnknown.Release = &VTableIUnknown.NoopRelease;
 
@@ -58,6 +58,29 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtract
             vTableIArchiveExtractCallback.GetStream = &ManagedGetStream;
             vTableIArchiveExtractCallback.PrepareOperation = &ManagedPrepareOperation;
             vTableIArchiveExtractCallback.SetOperationResult = &ManagedSetOperationResult;
+        }
+    }
+    
+    [UnmanagedCallersOnly]
+    public static HRESULT ManagedQueryInterface(void* that, Guid* iid, void** outObject)
+    {
+        if (!TryGetProxy(((IArchiveExtractCallback*)that)->id, out var proxy))
+        {
+            return HRESULT.E_INVALIDARG;
+        }
+
+        try
+        {
+            proxy.QueryInterface(iid, outObject);
+            return HRESULT.S_OK;
+        }
+        catch (NotImplementedException e)
+        {
+            return (HRESULT)e.HResult;
+        }
+        catch (Exception e)
+        {
+            return proxy.PersistAndExtractException(e);
         }
     }
 
@@ -170,13 +193,11 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtract
         }
     }
 
-    private readonly IManagedArchiveExtractCallback _implementation;
     private SequentialOutStreamProxy? _currentStreamProxy;
     private bool _disposedValue;
 
-    public ArchiveExtractCallbackProxy(IManagedArchiveExtractCallback implementation)
+    public ArchiveExtractCallbackProxy(IManagedArchiveExtractCallback implementation) : base(implementation)
     {
-        _implementation = implementation;
         fixed (void* lpVtbl = &_lpVtbl)
         {
             ComObject.lpVtbl = (void**)lpVtbl;

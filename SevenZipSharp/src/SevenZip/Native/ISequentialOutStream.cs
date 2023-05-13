@@ -18,7 +18,7 @@ public unsafe struct VTableISequentialOutStream
     public delegate* unmanaged<ISequentialOutStream*, byte*, uint, uint*, HRESULT> Write;
 }
 
-public unsafe class SequentialOutStreamProxy : ManagedComProxy<SequentialOutStreamProxy, ISequentialOutStream>
+public unsafe class SequentialOutStreamProxy : ManagedComProxy<SequentialOutStreamProxy, ISequentialOutStream, Stream>
 {
     private struct ManagedVTable
     {
@@ -68,11 +68,8 @@ public unsafe class SequentialOutStreamProxy : ManagedComProxy<SequentialOutStre
         }
     }
 
-    private readonly Stream _implementation;
-
-    public SequentialOutStreamProxy(Stream implementation)
+    public SequentialOutStreamProxy(Stream implementation) : base(implementation)
     {
-        _implementation = implementation;
         fixed (void* lpVtbl = &_lpVtbl)
         {
             ComObject.lpVtbl = (void**)lpVtbl;

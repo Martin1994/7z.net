@@ -19,7 +19,7 @@ public unsafe struct VTableIInStream
     public delegate* unmanaged<IInStream*, long, uint, ulong*, HRESULT> Seek;
 }
 
-public unsafe class InStreamProxy : ManagedComProxy<InStreamProxy, IInStream>
+public unsafe class InStreamProxy : ManagedComProxy<InStreamProxy, IInStream, Stream>
 {
     private struct ManagedVTable
     {
@@ -92,11 +92,8 @@ public unsafe class InStreamProxy : ManagedComProxy<InStreamProxy, IInStream>
         }
     }
 
-    private readonly Stream _implementation;
-
-    public InStreamProxy(Stream implementation)
+    public InStreamProxy(Stream implementation) : base(implementation)
     {
-        _implementation = implementation;
         fixed (void* lpVtbl = &_lpVtbl)
         {
             ComObject.lpVtbl = (void**)lpVtbl;
