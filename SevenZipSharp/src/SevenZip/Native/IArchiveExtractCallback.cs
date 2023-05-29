@@ -4,25 +4,7 @@ using System.Runtime.InteropServices;
 namespace SevenZip.Native;
 
 [Guid("23170F69-40C1-278A-0000-000600200000")]
-public unsafe struct IArchiveExtractCallback
-{
-    public void** lpVtbl;
-    // Used by proxy
-    public long id;
-}
-
-public unsafe struct VTableIArchiveExtractCallback
-{
-    public static ref VTableIArchiveExtractCallback FromPointer(void** lpVtbl) => ref *(VTableIArchiveExtractCallback*)(lpVtbl + VTableIUnknown.vTableOffset);
-
-    public delegate* unmanaged<IArchiveExtractCallback*, ulong, HRESULT> SetTotal;
-    public delegate* unmanaged<IArchiveExtractCallback*, ulong*, HRESULT> SetCompleted;
-    public delegate* unmanaged<IArchiveExtractCallback*, uint, ISequentialOutStream**, NAskMode, HRESULT> GetStream;
-    public delegate* unmanaged<IArchiveExtractCallback*, NAskMode, HRESULT> PrepareOperation;
-    public delegate* unmanaged<IArchiveExtractCallback*, NOperationResult, HRESULT> SetOperationResult;
-}
-
-public interface IManagedArchiveExtractCallback
+public interface IArchiveExtractCallback
 {
     void SetTotal(ulong size);
     void SetCompleted(in ulong size);
@@ -31,7 +13,18 @@ public interface IManagedArchiveExtractCallback
     void SetOperationResult(NOperationResult opRes);
 }
 
-public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtractCallbackProxy, IArchiveExtractCallback, IManagedArchiveExtractCallback>, IDisposable
+public unsafe struct VTableIArchiveExtractCallback
+{
+    public static ref VTableIArchiveExtractCallback FromPointer(void** lpVtbl) => ref *(VTableIArchiveExtractCallback*)(lpVtbl + VTableIUnknown.vTableOffset);
+
+    public delegate* unmanaged<ComObject*, ulong, HRESULT> SetTotal;
+    public delegate* unmanaged<ComObject*, ulong*, HRESULT> SetCompleted;
+    public delegate* unmanaged<ComObject*, uint, ComObject**, NAskMode, HRESULT> GetStream;
+    public delegate* unmanaged<ComObject*, NAskMode, HRESULT> PrepareOperation;
+    public delegate* unmanaged<ComObject*, NOperationResult, HRESULT> SetOperationResult;
+}
+
+public unsafe class ArchiveExtractCallbackProxy : ComProxy<ArchiveExtractCallbackProxy, IArchiveExtractCallback>, IDisposable
 {
     private struct ManagedVTable
     {
@@ -59,33 +52,23 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtract
             vTableIArchiveExtractCallback.PrepareOperation = &ManagedPrepareOperation;
             vTableIArchiveExtractCallback.SetOperationResult = &ManagedSetOperationResult;
         }
+
+        RegisterInterface(implementation => new ArchiveExtractCallbackProxy(implementation));
     }
-    
+
     [UnmanagedCallersOnly]
-    public static HRESULT ManagedQueryInterface(void* that, Guid* iid, void** outObject)
+    private static HRESULT ManagedQueryInterface(void* that, Guid* iid, void** outObject)
     {
-        if (!TryGetProxy(((IArchiveExtractCallback*)that)->id, out var proxy))
+        if (!TryGetProxy(((ComObject*)that)->id, out var proxy))
         {
             return HRESULT.E_INVALIDARG;
         }
 
-        try
-        {
-            proxy.QueryInterface(iid, outObject);
-            return HRESULT.S_OK;
-        }
-        catch (NotImplementedException e)
-        {
-            return (HRESULT)e.HResult;
-        }
-        catch (Exception e)
-        {
-            return proxy.PersistAndExtractException(e);
-        }
+        return proxy.QueryInterface(iid, outObject);
     }
 
     [UnmanagedCallersOnly]
-    private static HRESULT ManagedSetTotal(IArchiveExtractCallback* that, ulong size)
+    private static HRESULT ManagedSetTotal(ComObject* that, ulong size)
     {
         if (!TryGetProxy(that->id, out var proxy))
         {
@@ -104,7 +87,7 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtract
     }
 
     [UnmanagedCallersOnly]
-    private static HRESULT ManagedSetCompleted(IArchiveExtractCallback* that, ulong* size)
+    private static HRESULT ManagedSetCompleted(ComObject* that, ulong* size)
     {
         if (!TryGetProxy(that->id, out var proxy))
         {
@@ -123,7 +106,7 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtract
     }
 
     [UnmanagedCallersOnly]
-    private static HRESULT ManagedGetStream(IArchiveExtractCallback* that, uint index, ISequentialOutStream** outStream, NAskMode askExtractMode)
+    private static HRESULT ManagedGetStream(ComObject* that, uint index, ComObject** outStream, NAskMode askExtractMode)
     {
         if (!TryGetProxy(that->id, out var proxy))
         {
@@ -141,7 +124,7 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtract
             {
                 proxy._currentStreamProxy?.Dispose();
                 proxy._currentStreamProxy = new SequentialOutStreamProxy(stream);
-                fixed (ISequentialOutStream* comPtr = &proxy._currentStreamProxy.ComObject)
+                fixed (ComObject* comPtr = &proxy._currentStreamProxy.ComObject)
                 {
                     *outStream = comPtr;
                 }
@@ -156,7 +139,7 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtract
     }
 
     [UnmanagedCallersOnly]
-    private static HRESULT ManagedPrepareOperation(IArchiveExtractCallback* that, NAskMode askExtractMode)
+    private static HRESULT ManagedPrepareOperation(ComObject* that, NAskMode askExtractMode)
     {
         if (!TryGetProxy(that->id, out var proxy))
         {
@@ -175,7 +158,7 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtract
     }
 
     [UnmanagedCallersOnly]
-    private static HRESULT ManagedSetOperationResult(IArchiveExtractCallback* that, NOperationResult opRes)
+    private static HRESULT ManagedSetOperationResult(ComObject* that, NOperationResult opRes)
     {
         if (!TryGetProxy(that->id, out var proxy))
         {
@@ -196,7 +179,7 @@ public unsafe class ArchiveExtractCallbackProxy : ManagedComProxy<ArchiveExtract
     private SequentialOutStreamProxy? _currentStreamProxy;
     private bool _disposedValue;
 
-    public ArchiveExtractCallbackProxy(IManagedArchiveExtractCallback implementation) : base(implementation)
+    public ArchiveExtractCallbackProxy(IArchiveExtractCallback implementation) : base(implementation)
     {
         fixed (void* lpVtbl = &_lpVtbl)
         {

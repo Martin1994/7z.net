@@ -229,7 +229,8 @@ public static class PROPVARIANTExtension
         return DateTime.FromFileTime((long)prop.filetime.dwHighDateTime << 32 | (uint)prop.filetime.dwLowDateTime);
     }
 
-    public static unsafe string Format(this ref PROPVARIANT prop) {
+    public static unsafe string Format(this ref PROPVARIANT prop)
+    {
         switch (prop.varType)
         {
             case VARENUM.VT_EMPTY:
@@ -272,7 +273,8 @@ public static class HRESULTExtension
 {
     public static void EnsureSuccess(this HRESULT result, [CallerMemberName] string methodName = "")
     {
-        if (result == HRESULT.S_OK) {
+        if (result == HRESULT.S_OK)
+        {
             return;
         }
         throw new SevenZipComException(result, methodName);

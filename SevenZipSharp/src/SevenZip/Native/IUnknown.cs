@@ -19,7 +19,8 @@ public unsafe struct VTableIUnknown
     [UnmanagedCallersOnly]
     public static uint NoopRelease(void* that) => 0;
 
-    static VTableIUnknown() {
+    static VTableIUnknown()
+    {
         vTableOffset = sizeof(VTableIUnknown) / sizeof(void**);
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {

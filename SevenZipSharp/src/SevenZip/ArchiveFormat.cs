@@ -13,10 +13,12 @@ public class SevenZipArchiveFormat
         PROPVARIANT value;
 
         SevenZipLibrary.GetNumberOfFormats(out num).EnsureSuccess();
-        for (uint i = 0; i < num; i++) {
+        for (uint i = 0; i < num; i++)
+        {
             SevenZipLibrary.GetHandlerProperty2(i, NHandlerPropID.kClassID, out value).EnsureSuccess();
             CLSID* classIdPtr = value.ReadPointer<CLSID>();
-            if (classIdPtr == null) {
+            if (classIdPtr == null)
+            {
                 continue;
             }
             CLSID classId = *classIdPtr;
@@ -39,7 +41,8 @@ public class SevenZipArchiveFormat
             foreach ((string ext, string addExt) in extList.Zip(addExtList))
             {
                 _extToHandlerMap.TryAdd($".{ext}", format);
-                if (addExt != "*") {
+                if (addExt != "*")
+                {
                     _extToHandlerMap.TryAdd($".{addExt}.{ext}", format);
                 }
             }

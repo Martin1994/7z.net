@@ -3,23 +3,15 @@ using System.Runtime.InteropServices;
 
 namespace SevenZip.Native;
 
-[Guid("23170F69-40C1-278A-0000-000300030000")]
-public unsafe struct IInStream
-{
-    public void** lpVtbl;
-    // Used by proxy
-    public long id;
-}
-
 public unsafe struct VTableIInStream
 {
     public static ref VTableIInStream FromPointer(void** lpVtbl) => ref *(VTableIInStream*)(lpVtbl + VTableIUnknown.vTableOffset);
 
-    public delegate* unmanaged<IInStream*, byte*, uint, uint*, HRESULT> Read;
-    public delegate* unmanaged<IInStream*, long, uint, ulong*, HRESULT> Seek;
+    public delegate* unmanaged<ComObject*, byte*, uint, uint*, HRESULT> Read;
+    public delegate* unmanaged<ComObject*, long, uint, ulong*, HRESULT> Seek;
 }
 
-public unsafe class InStreamProxy : ManagedComProxy<InStreamProxy, IInStream, Stream>
+public unsafe class InStreamProxy : ComProxy<InStreamProxy, Stream>
 {
     private struct ManagedVTable
     {
@@ -36,7 +28,7 @@ public unsafe class InStreamProxy : ManagedComProxy<InStreamProxy, IInStream, St
             void** lpVtbl = (void**)ptr;
 
             ref VTableIUnknown vTableIUnknown = ref VTableIUnknown.FromPointer(lpVtbl);
-            vTableIUnknown.QueryInterface = &VTableIUnknown.NoopQueryInterface;
+            vTableIUnknown.QueryInterface = &ManagedQueryInterface;
             vTableIUnknown.AddRef = &VTableIUnknown.NoopAddRef;
             vTableIUnknown.Release = &VTableIUnknown.NoopRelease;
 
@@ -44,10 +36,23 @@ public unsafe class InStreamProxy : ManagedComProxy<InStreamProxy, IInStream, St
             vTableIInStream.Read = &ManagedRead;
             vTableIInStream.Seek = &ManagedSeek;
         }
+
+        RegisterInterface(new Guid("23170F69-40C1-278A-0000-000300030000"), implementation => new InStreamProxy(implementation));
     }
 
     [UnmanagedCallersOnly]
-    private static HRESULT ManagedRead(IInStream* that, byte* data, uint size, uint* processedSize)
+    private static HRESULT ManagedQueryInterface(void* that, Guid* iid, void** outObject)
+    {
+        if (!TryGetProxy(((ComObject*)that)->id, out var proxy))
+        {
+            return HRESULT.E_INVALIDARG;
+        }
+
+        return proxy.QueryInterface(iid, outObject);
+    }
+
+    [UnmanagedCallersOnly]
+    private static HRESULT ManagedRead(ComObject* that, byte* data, uint size, uint* processedSize)
     {
         if (!TryGetProxy(that->id, out var proxy))
         {
@@ -71,7 +76,7 @@ public unsafe class InStreamProxy : ManagedComProxy<InStreamProxy, IInStream, St
     }
 
     [UnmanagedCallersOnly]
-    private static HRESULT ManagedSeek(IInStream* that, long offset, uint seekOrigin, ulong* newPosition)
+    private static HRESULT ManagedSeek(ComObject* that, long offset, uint seekOrigin, ulong* newPosition)
     {
         if (!TryGetProxy(that->id, out var proxy))
         {
@@ -81,7 +86,8 @@ public unsafe class InStreamProxy : ManagedComProxy<InStreamProxy, IInStream, St
         try
         {
             ulong newPos = (ulong)proxy._implementation.Seek(offset, (SeekOrigin)seekOrigin);
-            if (newPosition != null) {
+            if (newPosition != null)
+            {
                 *newPosition = newPos;
             }
             return HRESULT.S_OK;

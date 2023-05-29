@@ -3,22 +3,14 @@ using System.Runtime.InteropServices;
 
 namespace SevenZip.Native;
 
-[Guid("23170F69-40C1-278A-0000-000300020000")]
-public unsafe struct ISequentialOutStream
-{
-    public void** lpVtbl;
-    // Used by proxy
-    public long id;
-}
-
 public unsafe struct VTableISequentialOutStream
 {
     public static ref VTableISequentialOutStream FromPointer(void** lpVtbl) => ref *(VTableISequentialOutStream*)(lpVtbl + VTableIUnknown.vTableOffset);
 
-    public delegate* unmanaged<ISequentialOutStream*, byte*, uint, uint*, HRESULT> Write;
+    public delegate* unmanaged<ComObject*, byte*, uint, uint*, HRESULT> Write;
 }
 
-public unsafe class SequentialOutStreamProxy : ManagedComProxy<SequentialOutStreamProxy, ISequentialOutStream, Stream>
+public unsafe class SequentialOutStreamProxy : ComProxy<SequentialOutStreamProxy, Stream>
 {
     private struct ManagedVTable
     {
@@ -35,23 +27,37 @@ public unsafe class SequentialOutStreamProxy : ManagedComProxy<SequentialOutStre
             void** lpVtbl = (void**)ptr;
 
             ref VTableIUnknown vTableIUnknown = ref VTableIUnknown.FromPointer(lpVtbl);
-            vTableIUnknown.QueryInterface = &VTableIUnknown.NoopQueryInterface;
+            vTableIUnknown.QueryInterface = &ManagedQueryInterface;
             vTableIUnknown.AddRef = &VTableIUnknown.NoopAddRef;
             vTableIUnknown.Release = &VTableIUnknown.NoopRelease;
 
             ref VTableISequentialOutStream vTableIInStream = ref VTableISequentialOutStream.FromPointer(lpVtbl);
             vTableIInStream.Write = &ManagedWrite;
         }
+
+        RegisterInterface(new Guid("23170F69-40C1-278A-0000-000300020000"), implementation => new SequentialOutStreamProxy(implementation));
     }
 
     [UnmanagedCallersOnly]
-    private static HRESULT ManagedWrite(ISequentialOutStream* that, byte* data, uint size, uint* processedSize)
+    private static HRESULT ManagedQueryInterface(void* that, Guid* iid, void** outObject)
+    {
+        if (!TryGetProxy(((ComObject*)that)->id, out var proxy))
+        {
+            return HRESULT.E_INVALIDARG;
+        }
+
+        return proxy.QueryInterface(iid, outObject);
+    }
+
+    [UnmanagedCallersOnly]
+    private static HRESULT ManagedWrite(ComObject* that, byte* data, uint size, uint* processedSize)
     {
         if (!TryGetProxy(that->id, out var proxy))
         {
             return HRESULT.E_INVALIDARG;
         }
-        if (size >= 0x80000000) {
+        if (size >= 0x80000000)
+        {
             return HRESULT.E_INVALIDARG;
         }
 

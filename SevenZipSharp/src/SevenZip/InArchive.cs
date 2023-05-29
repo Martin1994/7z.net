@@ -1,4 +1,5 @@
 using SevenZip.Native;
+
 namespace SevenZip;
 
 public struct SevenZipProperty
@@ -33,7 +34,6 @@ public unsafe class SevenZipInArchive : IDisposable
     public unsafe SevenZipInArchive(string filename, Stream stream)
     {
         _arc = null;
-        _streamProxy = null!;
         SevenZipArchiveFormat? format = SevenZipArchiveFormat.FromPath(filename);
         if (format == null)
         {
@@ -45,7 +45,7 @@ public unsafe class SevenZipInArchive : IDisposable
         _itemTree = new Lazy<SevenZipItemTree>(() => new SevenZipItemTree(this));
     }
 
-    public void Extract(IEnumerable<SevenZipItemNode> nodes, NAskMode mode, in IManagedArchiveExtractCallback callback)
+    public void Extract(IEnumerable<SevenZipItemNode> nodes, NAskMode mode, in IArchiveExtractCallback callback)
     {
         var indexes = nodes
             .SelectMany(node => node.Traverse())
@@ -55,7 +55,7 @@ public unsafe class SevenZipInArchive : IDisposable
         Extract(indexes, mode, callback);
     }
 
-    private void Extract(Span<uint> indexes, NAskMode mode, in IManagedArchiveExtractCallback callback)
+    private void Extract(Span<uint> indexes, NAskMode mode, in IArchiveExtractCallback callback)
     {
         indexes.Sort();
 
@@ -74,7 +74,7 @@ public unsafe class SevenZipInArchive : IDisposable
         }
     }
 
-    public void ExtractAll(NAskMode mode, in IManagedArchiveExtractCallback callback)
+    public void ExtractAll(NAskMode mode, in IArchiveExtractCallback callback)
     {
         using var callbackProxy = new ArchiveExtractCallbackProxy(callback);
         try
