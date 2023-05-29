@@ -3,15 +3,6 @@ using System.Runtime.InteropServices;
 
 namespace SevenZip.Native;
 
-[Guid("23170f69-40c1-278a-0000-000400040000")]
-public interface ICompressProgressInfo
-{
-    ///
-    /// Throw AbortedException to abort the current operation.
-    ///
-    void SetRatioInfo(in ulong inSize, in ulong outSize);
-}
-
 public unsafe struct VTableICompressProgressInfo
 {
     public static ref VTableICompressProgressInfo FromPointer(void** lpVtbl) => ref *(VTableICompressProgressInfo*)(lpVtbl + VTableIUnknown.vTableOffset);

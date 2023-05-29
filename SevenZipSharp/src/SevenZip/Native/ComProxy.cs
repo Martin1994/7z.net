@@ -77,7 +77,9 @@ public abstract unsafe class ComProxy<TSelf, TImplementation> : IComProxy
 
             if (proxy == null)
             {
-                Console.WriteLine($"Interface {*iid} is not implemented for {_implementation.GetType().Name}.");
+                #if DEBUG
+                Console.WriteLine("Interface {0} is not implemented for {1}.", *iid, _implementation.GetType().Name);
+                #endif
                 *outObject = null;
                 throw new NotImplementedException();
             }

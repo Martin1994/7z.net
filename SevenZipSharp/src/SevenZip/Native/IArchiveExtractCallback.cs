@@ -3,16 +3,6 @@ using System.Runtime.InteropServices;
 
 namespace SevenZip.Native;
 
-[Guid("23170F69-40C1-278A-0000-000600200000")]
-public interface IArchiveExtractCallback
-{
-    void SetTotal(ulong size);
-    void SetCompleted(in ulong size);
-    Stream? GetStream(uint index, NAskMode askExtractMode);
-    void PrepareOperation(NAskMode askExtractMode);
-    void SetOperationResult(NOperationResult opRes);
-}
-
 public unsafe struct VTableIArchiveExtractCallback
 {
     public static ref VTableIArchiveExtractCallback FromPointer(void** lpVtbl) => ref *(VTableIArchiveExtractCallback*)(lpVtbl + VTableIUnknown.vTableOffset);

@@ -3,12 +3,6 @@ using System.Runtime.InteropServices;
 
 namespace SevenZip.Native;
 
-[Guid("23170f69-40c1-278a-0000-000500100000")]
-public interface ICryptoGetTextPassword
-{
-    string? CryptoGetTextPassword();
-}
-
 public unsafe struct VTableICryptoGetTextPassword
 {
     public static ref VTableICryptoGetTextPassword FromPointer(void** lpVtbl) => ref *(VTableICryptoGetTextPassword*)(lpVtbl + VTableIUnknown.vTableOffset);
