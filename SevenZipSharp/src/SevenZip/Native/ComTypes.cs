@@ -91,6 +91,10 @@ public enum VARENUM : ushort
     VT_TYPEMASK	= 0xfff
 }
 
+// The non-Windows port of BSTR uses the native wchar_t, which uses UTF-32 with bits length.
+// See: MyWindows.h
+//     typedef wchar_t WCHAR;
+//     typedef WCHAR OLECHAR;
 public static unsafe class BSTRExtension
 {
     private static UTF32Encoding utf32 = new UTF32Encoding();
@@ -103,14 +107,26 @@ public static unsafe class BSTRExtension
         }
         else
         {
-            // The non-Windows port of BSTR uses the native wchar_t, which uses UTF-32 with bits length.
-            // See: MyWindows.h
-            //     typedef wchar_t WCHAR;
-            //     typedef WCHAR OLECHAR;
+            
             return utf32.GetString(new ReadOnlySpan<byte>((byte*)ptr, *(((int*)ptr) - 1)));
         }
     }
 
+    public unsafe static IntPtr AllocateBSTR(this string str)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return Marshal.StringToBSTR(str)!;
+        }
+        else
+        {
+            Span<byte> bytes = utf32.GetBytes(str);
+            fixed (byte* sz = bytes)
+            {
+                return (IntPtr)SevenZipLibrary.SysAllocStringLen(sz, (uint)str.Length);
+            }
+        }
+    }
 }
 
 public static class PROPVARIANTExtension

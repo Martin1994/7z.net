@@ -27,6 +27,9 @@ public class SevenZipLibrary
         CreateObject(clsid, typeof(T).GUID, out obj).EnsureSuccess();
         return (T*)obj;
     }
+
+    [DllImport(LIB)]
+    public unsafe extern static void* SysAllocStringLen(byte* sz, uint len);
 }
 
 public enum NMethodPropID : uint
