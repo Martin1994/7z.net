@@ -20,7 +20,7 @@ var arc = new SevenZipInArchive(path, stream);
 
 arc.ExtractAll(NAskMode.kExtract, new TestExtractCallback(arc, extractDest));
 
-class TestExtractCallback : IManagedArchiveExtractCallback
+class TestExtractCallback : IArchiveExtractCallback
 {
     private readonly SevenZipInArchive _arc;
     private readonly string _outPath;
