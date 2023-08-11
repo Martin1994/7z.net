@@ -40,6 +40,7 @@ public unsafe class SevenZipInArchive : IDisposable
             throw new FormatException("Cannot derive archive type from the given file.");
         }
         _arc = SevenZipLibrary.CreateObject<IInArchive>(format.ClassId);
+        _arc->AddRef();
         _streamProxy = new InStreamProxy(stream);
         _arc->Open(in _streamProxy.ComObject);
         _itemTree = new Lazy<SevenZipItemTree>(() => new SevenZipItemTree(this));
@@ -49,13 +50,13 @@ public unsafe class SevenZipInArchive : IDisposable
     {
         var indexes = nodes
             .SelectMany(node => node.Traverse())
-            .Where(node => node.Type == SevenZipItemType.File)
+            .Where(node => node.IsTracked)
             .Select(node => node.Id)
             .ToArray();
         Extract(indexes, mode, callback);
     }
 
-    private void Extract(Span<uint> indexes, NAskMode mode, in IArchiveExtractCallback callback)
+    public void Extract(Span<uint> indexes, NAskMode mode, in IArchiveExtractCallback callback)
     {
         indexes.Sort();
 
@@ -69,8 +70,9 @@ public unsafe class SevenZipInArchive : IDisposable
             Exception? inner = callbackProxy.PopPendingException();
             if (inner != null)
             {
-                throw new SevenZipComException(ex.Code, ex.Message, inner);
+                throw new SevenZipComException(ex.HResult, ex.Message, inner);
             }
+            throw;
         }
     }
 
@@ -86,8 +88,9 @@ public unsafe class SevenZipInArchive : IDisposable
             Exception? inner = callbackProxy.PopPendingException();
             if (inner != null)
             {
-                throw new SevenZipComException(ex.Code, ex.Message, inner);
+                throw new SevenZipComException(ex.HResult, ex.Message, inner);
             }
+            throw;
         }
     }
 

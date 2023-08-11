@@ -301,20 +301,18 @@ public class SevenZipComException : Exception
 {
     private static string GetExceptionMessage(HRESULT code, string methodName)
     {
-        return $"7-zip COM invocation {methodName} returned unsuccessful result: 0x{(uint)code:X} {Enum.GetName(code)}";
+        return $"7-zip COM invocation {methodName} returned unsuccessful result: 0x{(uint)code:X} {Enum.GetName(code) ?? Marshal.GetExceptionForHR((int)code)?.Message}";
     }
-
-    public HRESULT Code { get; }
 
     public SevenZipComException(HRESULT code, string methodName)
         : base(GetExceptionMessage(code, methodName))
     {
-        Code = code;
+        HResult = (int)code;
     }
 
-    public SevenZipComException(HRESULT code, string methodName, Exception innerException)
-        : base(GetExceptionMessage(code, methodName), innerException)
+    public SevenZipComException(int hResult, string message, Exception innerException)
+        : base(message, innerException)
     {
-        Code = code;
+        HResult = hResult;
     }
 }

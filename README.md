@@ -9,7 +9,7 @@ Due to license limitation, you need place `7z.dll` or `7z.so` under library sear
 ```csharp
 using SevenZip;
 using SevenZip.Native;
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 
 var path = args[0];
 var extractDest = args[1];
