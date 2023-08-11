@@ -1,4 +1,5 @@
 using SevenZip.Native;
+using System.Runtime.CompilerServices;
 
 namespace SevenZip;
 
