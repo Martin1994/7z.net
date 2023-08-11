@@ -20,6 +20,13 @@ public unsafe class SevenZipInArchive : IDisposable
 
     public uint Count => _arc->GetNumberOfItem();
 
+    static SevenZipInArchive()
+    {
+        RuntimeHelpers.RunClassConstructor(typeof(ArchiveExtractCallbackProxy).TypeHandle);
+        RuntimeHelpers.RunClassConstructor(typeof(CompressProgressInfoProxy).TypeHandle);
+        RuntimeHelpers.RunClassConstructor(typeof(CryptoGetTextPasswordProxy).TypeHandle);
+    }
+
     public ulong PhysicalSize
     {
         get
