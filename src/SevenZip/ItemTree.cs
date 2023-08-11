@@ -1,15 +1,16 @@
 using SevenZip.Native;
-using System;
-using static SevenZip.SevenZipItemTree;
 
 namespace SevenZip;
 
 public struct SevenZipItemNode
 {
+    public const uint ROOT_ID = 0xFFFFFFFF;
+    public const uint UNTRACKED_DIR_ID = 0xFFFFFFFE;
+
     private readonly SevenZipItemTree _tree;
     private readonly int _index;
 
-    public SevenZipItemNode(SevenZipItemTree tree, int index)
+    internal SevenZipItemNode(SevenZipItemTree tree, int index)
     {
         _tree = tree;
         _index = index;
@@ -21,7 +22,23 @@ public struct SevenZipItemNode
     public uint Directories => _tree.Nodes[_index].Directories;
     public uint Files => _tree.Nodes[_index].Files;
 
-    public bool IsRoot => _index == ROOT_INDEX;
+
+    public bool IsTracked
+    {
+        get
+        {
+            switch (Id)
+            {
+                case ROOT_ID:
+                case UNTRACKED_DIR_ID:
+                    return false;
+
+                default:
+                    return true;
+            }
+        }
+    }
+
     public SevenZipItemNode Parent => new SevenZipItemNode(tree: _tree, index: _tree.Nodes[_index].ParentIndex);
 
     public bool HasDetail
@@ -122,12 +139,9 @@ public struct SevenZipItemNode
     }
 }
 
-public class SevenZipItemTree
+internal class SevenZipItemTree
 {
-    internal const int ROOT_INDEX = 0;
-
-    public const uint ROOT_ID = 0xFFFFFFFF;
-    public const uint UNTRACKED_DIR_ID = 0xFFFFFFFE;
+    private const int ROOT_INDEX = 0;
 
     internal struct Node
     {
@@ -172,7 +186,7 @@ public class SevenZipItemTree
 
         List<Node> nodes = new List<Node>((int)num + 1)
         {
-            new Node(ROOT_ID, SevenZipItemType.Directory, "", ROOT_INDEX)
+            new Node(SevenZipItemNode.ROOT_ID, SevenZipItemType.Directory, "", ROOT_INDEX)
         };
 
         for (uint i = 0; i < num; i++)
@@ -206,7 +220,7 @@ public class SevenZipItemTree
         int parentIndex = ROOT_INDEX;
         for (int i = 0; i < pathNodes.Length - 1; i++)
         {
-            parentIndex = GetOrAddDirectory(nodes, UNTRACKED_DIR_ID, parentIndex, pathNodes[i]);
+            parentIndex = GetOrAddDirectory(nodes, SevenZipItemNode.UNTRACKED_DIR_ID, parentIndex, pathNodes[i]);
         }
 
         string name = pathNodes.Last();
@@ -227,7 +241,7 @@ public class SevenZipItemTree
         var parentNode = nodes[parentIndex];
         if (parentNode.Children!.TryGetValue(name, out var existingNodeIndex))
         {
-            if (id != UNTRACKED_DIR_ID)
+            if (id != SevenZipItemNode.UNTRACKED_DIR_ID)
             {
                 // Update ID
                 // This means the archive tracks a directory item, but appears after its children
