@@ -17,7 +17,7 @@ public unsafe class SevenZipInArchive : IDisposable
     private readonly InStreamProxy _streamProxy;
     private bool _disposedValue;
     private readonly Lazy<SevenZipItemTree> _itemTree;
-    public SevenZipItemNode ItemTree => _itemTree.Value.Root;
+    public SevenZipItemNode RootNode => _itemTree.Value.Root;
 
     public uint Count => _arc->GetNumberOfItem();
 
