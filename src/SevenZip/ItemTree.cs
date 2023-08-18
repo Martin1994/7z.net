@@ -22,7 +22,6 @@ public struct SevenZipItemNode
     public uint Directories => _tree.Nodes[_index].Directories;
     public uint Files => _tree.Nodes[_index].Files;
 
-
     public bool IsTracked
     {
         get
@@ -38,6 +37,8 @@ public struct SevenZipItemNode
             }
         }
     }
+
+    public bool IsRoot => Id == ROOT_ID;
 
     public SevenZipItemNode Parent => new SevenZipItemNode(tree: _tree, index: _tree.Nodes[_index].ParentIndex);
 
@@ -201,7 +202,7 @@ internal class SevenZipItemTree
             native.GetProperty(i, PROPID.kpidPath, out prop);
             string path = prop.ReadOptionalString() ?? "";
             native.GetProperty(i, PROPID.kpidIsDir, out prop);
-            bool isDir = prop.ReadBool();
+            bool isDir = prop.ReadBool(false);
 
             Add(nodes, i, path, isDir);
         }
