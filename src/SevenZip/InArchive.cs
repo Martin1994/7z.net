@@ -14,6 +14,7 @@ public unsafe class SevenZipInArchive : IDisposable
 {
     private readonly IInArchive* _arc;
     public ref IInArchive Native => ref *_arc;
+    public Stream Stream { get; }
     private readonly InStreamProxy _streamProxy;
     private bool _disposedValue;
     private readonly Lazy<SevenZipItemTree> _itemTree;
@@ -50,6 +51,7 @@ public unsafe class SevenZipInArchive : IDisposable
         _arc = SevenZipLibrary.CreateObject<IInArchive>(format.ClassId);
         _arc->AddRef();
         _streamProxy = new InStreamProxy(stream);
+        Stream = stream;
         _arc->Open(in _streamProxy.ComObject);
         _itemTree = new Lazy<SevenZipItemTree>(() => new SevenZipItemTree(this));
     }
