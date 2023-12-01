@@ -5,7 +5,7 @@ namespace SevenZip;
 public class SevenZipArchiveFormat
 {
     private static readonly Dictionary<string, SevenZipArchiveFormat> _nameToHandlerMap = new();
-    private static readonly Dictionary<string, SevenZipArchiveFormat> _extToHandlerMap = new();
+    private static readonly Dictionary<string, List<SevenZipArchiveFormat>> _extToHandlerMap = new();
 
     unsafe static SevenZipArchiveFormat()
     {
@@ -40,33 +40,44 @@ public class SevenZipArchiveFormat
 
             foreach ((string ext, string addExt) in extList.Zip(addExtList))
             {
-                _extToHandlerMap.TryAdd($".{ext}", format);
+                RegisterFormatByExtension($".{ext}", format);
                 if (addExt != "*")
                 {
-                    _extToHandlerMap.TryAdd($".{addExt}.{ext}", format);
+                    RegisterFormatByExtension($".{addExt}.{ext}", format);
                 }
             }
         }
     }
 
-    public static SevenZipArchiveFormat? FromPath(string path)
+    private static void RegisterFormatByExtension(string ext, SevenZipArchiveFormat format)
+    {
+        List<SevenZipArchiveFormat>? list;
+        if (!_extToHandlerMap.TryGetValue(ext, out list))
+        {
+            list = new();
+            _extToHandlerMap.Add(ext, list);
+        }
+        list.Add(format);
+    }
+
+    public static IReadOnlyList<SevenZipArchiveFormat> FromPath(string path)
     {
         string ext = Path.GetExtension(path);
         string addExt = Path.GetExtension(Path.GetFileNameWithoutExtension(path));
 
-        SevenZipArchiveFormat? format;
+        List<SevenZipArchiveFormat> formats = new();
 
-        if (_extToHandlerMap.TryGetValue(ext, out format))
+        if (_extToHandlerMap.TryGetValue(ext, out var knownList))
         {
-            return format;
+            formats.AddRange(knownList);
         }
 
-        if (addExt != "" && _extToHandlerMap.TryGetValue(addExt + ext, out format))
+        if (addExt != "" && _extToHandlerMap.TryGetValue(addExt + ext, out knownList))
         {
-            return format;
+            formats.AddRange(knownList);
         }
 
-        return null;
+        return formats;
     }
 
     public string Name { get; }

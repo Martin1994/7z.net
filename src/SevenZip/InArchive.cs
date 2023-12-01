@@ -43,16 +43,38 @@ public unsafe class SevenZipInArchive : IDisposable
     public unsafe SevenZipInArchive(string filename, Stream stream)
     {
         _arc = null;
-        SevenZipArchiveFormat? format = SevenZipArchiveFormat.FromPath(filename);
-        if (format == null)
+        var formats = SevenZipArchiveFormat.FromPath(filename);
+        
+        _streamProxy = new InStreamProxy(stream);
+
+        foreach (var format in formats)
         {
+            try
+            {
+                _arc = SevenZipLibrary.CreateObject<IInArchive>(format.ClassId);
+                _arc->AddRef();
+                _arc->Open(in _streamProxy.ComObject);
+                break;
+            }
+            catch (SevenZipComException ex)
+            {
+                _arc->Release();
+                _arc = null;
+                if (ex.Code != HRESULT.S_FALSE)
+                {
+                    _streamProxy.Dispose();
+                    throw;
+                }
+            }
+        }
+        
+        if (_arc == null)
+        {
+            _streamProxy.Dispose();
             throw new FormatException("Cannot derive archive type from the given file.");
         }
-        _arc = SevenZipLibrary.CreateObject<IInArchive>(format.ClassId);
-        _arc->AddRef();
-        _streamProxy = new InStreamProxy(stream);
+
         Stream = stream;
-        _arc->Open(in _streamProxy.ComObject);
         _itemTree = new Lazy<SevenZipItemTree>(() => new SevenZipItemTree(this));
     }
 
