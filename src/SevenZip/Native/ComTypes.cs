@@ -216,11 +216,20 @@ public static class PROPVARIANTExtension
 
     public static ulong ReadUInt64(this ref PROPVARIANT prop)
     {
-        if (prop.varType != VARENUM.VT_UI8)
+        if (prop.varType == VARENUM.VT_UI8)
         {
-            throw new ArgumentException($"Expect VT_UI8 but got {Enum.GetName(prop.varType)}");
+            return prop.ulVal;
         }
-        return prop.ulVal;
+        if (prop.varType == VARENUM.VT_UI4)
+        {
+            return prop.uintVal;
+        }
+        if (prop.varType == VARENUM.VT_UI2)
+        {
+            return prop.uiVal;
+        }
+
+        throw new ArgumentException($"Expect VT_UI8 or compatible types but got {Enum.GetName(prop.varType)}");
     }
 
     public static DateTime ReadFileTime(this ref PROPVARIANT prop)

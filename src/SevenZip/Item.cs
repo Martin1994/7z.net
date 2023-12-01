@@ -24,7 +24,7 @@ public struct SevenZipItem
         get
         {
             _arc.Native.GetProperty(_index, PROPID.kpidIsDir, out var prop);
-            return prop.ReadBool() ? SevenZipItemType.Directory : SevenZipItemType.File;
+            return prop.ReadBool(false) ? SevenZipItemType.Directory : SevenZipItemType.File;
         }
     }
 
@@ -51,50 +51,54 @@ public struct SevenZipItem
     const uint FILE_ATTRIBUTE_UNIX_EXTENSION = 0x8000;
     const uint S_IFMT = 0xF000;
     const uint S_IFDIR = 0x4000;
-    public UnixFileMode UnixFileMode
+    public bool TryGetUnixFileMode(out UnixFileMode mode)
     {
-        get
+        _arc.Native.GetProperty(_index, PROPID.kpidAttrib, out var prop);
+        if (!prop.TryReadUInt32(out uint windowsAttr))
         {
-            _arc.Native.GetProperty(_index, PROPID.kpidAttrib, out var prop);
-            uint windowsAttr = prop.ReadUInt32();
+            mode = default;
+            return false;
+        }
 
-            if ((windowsAttr & FILE_ATTRIBUTE_UNIX_EXTENSION) > 0)
+        if ((windowsAttr & FILE_ATTRIBUTE_UNIX_EXTENSION) > 0)
+        {
+            // Use native Unix file mode information
+            uint unixMode = windowsAttr >> 16;
+            if ((unixMode & S_IFMT) == S_IFDIR)
             {
-                uint unixMode = windowsAttr >> 16;
-                if ((unixMode & S_IFMT) == S_IFDIR)
-                {
-                    unixMode |= (uint)(UnixFileMode.OtherExecute | UnixFileMode.GroupExecute | UnixFileMode.UserExecute);
-                }
-                return (UnixFileMode)(unixMode & 0xFFF);
+                unixMode |= (uint)(UnixFileMode.OtherExecute | UnixFileMode.GroupExecute | UnixFileMode.UserExecute);
             }
-            else
+            mode = (UnixFileMode)(unixMode & 0xFFF);
+        }
+        else
+        {
+            // Derive Unix file mode from Windows file attributes as a best effort guess
+            FileAttributes parsedAttr = (FileAttributes)(windowsAttr & 0x7FFF);
+            mode = UnixFileMode.OtherRead | UnixFileMode.GroupRead | UnixFileMode.UserRead;
+
+            if ((parsedAttr & FileAttributes.Directory) > 0)
             {
-                FileAttributes parsedAttr = (FileAttributes)(windowsAttr & 0x7FFF);
-                UnixFileMode mode = UnixFileMode.OtherRead | UnixFileMode.GroupRead | UnixFileMode.UserRead;
+                mode |= UnixFileMode.OtherExecute | UnixFileMode.GroupExecute | UnixFileMode.UserExecute;
+            }
 
-                if ((parsedAttr & FileAttributes.Directory) > 0)
-                {
-                    mode |= UnixFileMode.OtherExecute | UnixFileMode.GroupExecute | UnixFileMode.UserExecute;
-                }
-
-                if ((parsedAttr & FileAttributes.ReadOnly) == 0)
-                {
-                    mode |= UnixFileMode.UserWrite;
-                }
-
-                return mode;
+            if ((parsedAttr & FileAttributes.ReadOnly) == 0)
+            {
+                mode |= UnixFileMode.UserWrite;
             }
         }
+        return true;
     }
 
-    public FileAttributes WindowsFileAttributes
+    public bool TryGetWindowsFileAttributes(out FileAttributes result)
     {
-        get
+        _arc.Native.GetProperty(_index, PROPID.kpidAttrib, out var prop);
+        if (prop.TryReadUInt32(out uint attr))
         {
-            _arc.Native.GetProperty(_index, PROPID.kpidAttrib, out var prop);
-            uint attr = prop.ReadUInt32();
-            return (FileAttributes)(attr & 0x7FFF); // 7z only supports attributes up to 0x7FFF
+            result = (FileAttributes)(attr & 0x7FFF); // 7z only supports attributes up to 0x7FFF
+            return true;
         }
+        result = default;
+        return false;
     }
 
     public DateTime ModifiedTime
