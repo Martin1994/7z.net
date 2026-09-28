@@ -60,7 +60,7 @@ public unsafe class SevenZipInArchive : IDisposable
             {
                 _arc->Release();
                 _arc = null;
-                if (ex.Code != HRESULT.S_FALSE)
+                if (ex.HResult != HRESULT.S_FALSE)
                 {
                     _streamProxy.Dispose();
                     throw;

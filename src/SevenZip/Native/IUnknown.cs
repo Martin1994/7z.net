@@ -4,7 +4,10 @@ namespace SevenZip.Native;
 
 public unsafe struct VTableIUnknown
 {
-    public const int UNIX_COM_DESCTRUCTOR_COUNT = 2;
+    public const int P7ZIP_COM_DESCTRUCTOR_COUNT = 2;
+
+    // No longer supports p7zip, so this is always false.
+    public const bool Z7_USE_VIRTUAL_DESTRUCTOR_IN_IUNKNOWN = false;
 
     public static readonly int vTableOffset;
 
@@ -22,10 +25,10 @@ public unsafe struct VTableIUnknown
     static VTableIUnknown()
     {
         vTableOffset = sizeof(VTableIUnknown) / sizeof(void**);
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        if (Z7_USE_VIRTUAL_DESTRUCTOR_IN_IUNKNOWN && !RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             // Destructors are ahead of other methods on non-Windows builds
-            vTableOffset += UNIX_COM_DESCTRUCTOR_COUNT;
+            vTableOffset += P7ZIP_COM_DESCTRUCTOR_COUNT;
         }
     }
 

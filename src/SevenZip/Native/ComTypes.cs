@@ -316,12 +316,14 @@ public class SevenZipComException : Exception
     public SevenZipComException(HRESULT code, string methodName)
         : base(GetExceptionMessage(code, methodName))
     {
-        HResult = (int)code;
+        ((Exception)this).HResult = (int)code;
     }
 
-    public SevenZipComException(int hResult, string message, Exception innerException)
+    public SevenZipComException(HRESULT code, string message, Exception innerException)
         : base(message, innerException)
     {
-        HResult = hResult;
+        ((Exception)this).HResult = (int)code;
     }
+
+    public new HRESULT HResult => (HRESULT)((Exception)this).HResult;
 }
