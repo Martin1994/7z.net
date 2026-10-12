@@ -60,6 +60,16 @@ public class SevenZipArchiveFormat
         list.Add(format);
     }
 
+    /// <summary>
+    /// Forces the format registry to be built. Does nothing else.
+    /// </summary>
+    /// <remarks>
+    /// The registry is this type's static constructor, so any access to a static member would do.
+    /// It is recommended to proactive call this at start-up, so that a missing or unusable 7-Zip library fails fast.
+    public static void Initialize()
+    {
+    }
+
     public static IReadOnlyList<SevenZipArchiveFormat> FromPath(string path)
     {
         string ext = Path.GetExtension(path);
