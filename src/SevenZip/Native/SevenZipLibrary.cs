@@ -43,12 +43,19 @@ public class SevenZipLibrary
     /// library under any other name, install your own <see cref="NativeLibrary.SetDllImportResolver"/>
     /// instead of calling this.
     ///
-    /// The default probing is not enough for two reasons: on macOS the runtime probes only
+    /// The default probing is not enough: on macOS the runtime probes only
     /// <c>lib7z</c>, <c>lib7z.dylib</c> and <c>7z.dylib</c>, never <c>7z.so</c>; and the hardened
     /// runtime strips <c>DYLD_*</c>, so the location cannot come from the environment either.
+    /// On Linux, distribution packages install <c>7z.so</c> in private directories outside the
+    /// default loader search path. After the application and process directories, probe
+    /// <c>/usr/lib/7zip</c> (Ubuntu, Arch) and <c>/usr/libexec/7zip</c> (Fedora).
+    /// If none of these directories contains the library, fall back to the runtime's default search.
     /// </remarks>
     ///
-    /// <returns>The path to the library that was loaded, or <c>null</c> if none was found.</returns>
+    /// <returns>
+    /// The path found in the explicit search directories, or <c>null</c> if none was found there.
+    /// The runtime's default search is deferred until the first P/Invoke.
+    /// </returns>
     public static string? Initialize() => _initialized.Value;
 
     private static string? Install()
@@ -65,8 +72,7 @@ public class SevenZipLibrary
             var resolved = path ?? Find();
 
             return resolved is null
-                ? throw new DllNotFoundException(
-                    $"Cannot load {DefaultFileName}. Looked next to {string.Join(", ", Directories())}.")
+                ? IntPtr.Zero
                 : NativeLibrary.Load(resolved);
         });
 
@@ -82,6 +88,12 @@ public class SevenZipLibrary
         if (Path.GetDirectoryName(Environment.ProcessPath) is { Length: > 0 } processDirectory)
         {
             yield return processDirectory;
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            yield return "/usr/lib/7zip";
+            yield return "/usr/libexec/7zip";
         }
     }
 
